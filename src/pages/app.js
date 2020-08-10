@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Switch, Route, Link } from 'react-router-dom';
 import Home from './home.js';
-import NewTab from './newtab.js';
+import CanvasTutorial from './canvastutorial.js';
 import About from './about.js';
 
 class App extends React.Component {
@@ -14,7 +14,7 @@ class App extends React.Component {
                             <Link to="/">Home</Link>
                         </li>
                         <li>
-                            <Link to="/NewTab" name='abc'>NewTab</Link>
+                            <Link to="/CanvasTutorial">CanvasTutorial</Link>
                         </li>
                         <li>
                             <Link to="/About">About</Link>
@@ -28,8 +28,8 @@ class App extends React.Component {
                         <Route exact path="/">
                             <Home />
                         </Route>
-                        <Route path="/NewTab">
-                            <NewTab>{this.props.name} </NewTab>
+                        <Route path="/CanvasTutorial">
+                            <CanvasTutorial />
                         </Route>
                         <Route path="/About">
                             <About />
