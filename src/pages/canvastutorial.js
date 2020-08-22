@@ -11,6 +11,47 @@ const canvasStyle = {
     margin: '0',
 }
 
+
+class Brick {
+    constructor() {
+        this.brickRowCount = 3;
+        this.brickColumnCount = 5;
+        this.brickWidth = 75;
+        this.brickHeight = 20;
+        this.brickPadding = 10;
+        this.brickOffsetTop = 30;
+        this.brickOffsetLeft = 30;
+        this.bricks = [];
+
+        for(var c=0; c<this.brickColumnCount; c++) {
+            this.bricks[c] = [];
+            for(var r=0; r<this.brickRowCount; r++) {
+                this.bricks[c][r] = { x: 0, y: 0 , status: 1};
+            }
+        }
+    }
+
+    drawBricks(ctx) {
+        for(var c=0; c<this.brickColumnCount; c++) {
+            for(var r=0; r<this.brickRowCount; r++) {
+                if(this.bricks[c][r].status === 1){
+                    var brickX = (c*(this.brickWidth+this.brickPadding))+this.brickOffsetLeft;
+                    var brickY = (r*(this.brickHeight+this.brickPadding))+this.brickOffsetTop;
+                    this.bricks[c][r].x = brickX;
+                    this.bricks[c][r].y = brickY;
+                    ctx.beginPath();
+                    ctx.rect(brickX, brickY, this.brickWidth, this.brickHeight);
+                    ctx.fillStyle = "#0095DD";
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+        }
+    }
+}
+
+
+
 class GameCanvas extends React.Component {
     constructor(props){
         super(props);
@@ -27,10 +68,48 @@ class GameCanvas extends React.Component {
             paddleX: (480 - 70) / 2,
             rightPressed: false,
             leftPressed: false,
+            intervalId: 0,
         };
-
+        this.score = 0;
+        this.lives = 3;
+        this.Brick = new Brick();
         this.keyDownHandler = this.keyDownHandler.bind(this);
         this.keyUpHandler = this.keyUpHandler.bind(this);
+    }
+
+    collisionDetection() {
+        let x = this.state.x;
+        let y = this.state.y;
+        let dy = this.state.dy;
+        let isCollide = false;
+        for(var c=0; c<this.Brick.brickColumnCount; c++) {
+            for(var r=0; r<this.Brick.brickRowCount; r++) {
+                var b = this.Brick.bricks[c][r];
+                if(b.status === 1 && 
+                    x > b.x && x < b.x+this.Brick.brickWidth && y > b.y && y < b.y+this.Brick.brickHeight) {
+                    dy = -dy;
+                    isCollide = true;
+                    b.status = 0;
+                    this.score++;
+                    if(this.score === this.Brick.brickRowCount*this.Brick.brickColumnCount) {
+                        alert("YOU WIN, CONGRATULATIONS!");
+                        clearInterval(this.state.intervalId);
+                        document.location.reload();
+                    }
+                }
+            }
+        }
+
+        if(isCollide){
+            this.setState({dy: dy});
+        }
+    }
+
+    mouseMoveHandler(e) {
+        var relativeX = e.clientX - this.canvas.offsetLeft;
+        if(relativeX > 0 && relativeX < this.canvas.width) {
+            this.setState({paddleX: relativeX - this.state.paddleWidth/2});
+        }
     }
 
     keyDownHandler(e){
@@ -51,6 +130,18 @@ class GameCanvas extends React.Component {
         if(e.keyCode === 37){
             this.setState({leftPressed: false});
         }
+    }
+
+    drawScore(ctx) {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Score: "+this.score, 8, 20);
+    }
+
+    drawLives(ctx) {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#0095DD";
+        ctx.fillText("Lives: "+ this.lives, this.canvas.width-65, 20);
     }
 
     drawBall(ctx){
@@ -78,8 +169,12 @@ class GameCanvas extends React.Component {
 
     draw(canvas, ctx){
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        this.Brick.drawBricks(ctx);
         this.drawBall(ctx);
         this.drawPaddle(ctx);
+        this.drawScore(ctx);
+        this.drawLives(ctx);
+        this.collisionDetection();
         var x = this.state.x; var y = this.state.y;
         var dx = this.state.dx; var dy = this.state.dy;
         var br = this.state.ballRadius;
@@ -94,10 +189,26 @@ class GameCanvas extends React.Component {
             if(x > paddleX && x < paddleX + this.state.paddleWidth){
                 dy = -dy;
             }else{
-                alert('GAME OVER');
-
-                //TODO error: not reload correctly
-                window.location.reload();
+                this.lives--;
+                if(!this.lives){
+                    alert('GAME OVER');
+                    document.location.reload();
+                    clearInterval(this.state.intervalId);
+                } else {
+                    let x = this.canvas.width / 2;
+                    let y = this.canvas.height - 30;
+                    let dx = 2;
+                    let dy = -2;
+                    let paddleX = (this.canvas.width - this.state.paddleWidth) / 2;
+                    this.setState({
+                        x: x,
+                        y: y,
+                        dx: dx,
+                        dy: dy,
+                        paddleX: paddleX,
+                    });
+                    return;
+                }
             }
         }
 
@@ -127,14 +238,15 @@ class GameCanvas extends React.Component {
     }
 
     canvasControl(){
-        var canvas = document.getElementById("myCanvas");
-        var ctx = canvas.getContext('2d');
+        this.canvas = document.getElementById("myCanvas");
+        var ctx = this.canvas.getContext('2d');
 
         this.initState();
 
         document.addEventListener('keydown', this.keyDownHandler, false);
-        document.addEventListener('keyup', this.keyUpHandler, false);
-        const intervalId = setInterval(() => this.draw(canvas, ctx), 10);
+        document.addEventListener('keyup', this.keyUpHandler, false);        
+        document.addEventListener("mousemove", this.mouseMoveHandler.bind(this), false);
+        const intervalId = setInterval(() => this.draw(this.canvas, ctx), 10);
         this.setState({intervalId: intervalId});
         
     }
